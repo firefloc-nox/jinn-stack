@@ -471,7 +471,41 @@ info "MemViz repo ready"
 step "Installing & building server..."
 (cd "$MEMVIZ_DIR/server" && npm install && npm run build)
 step "Installing & building client..."
-(cd "$MEMVIZ_DIR/client" && npm install && npm run build)
+(cd "$MEMVIZ_DIR/client" && npm install && npx vite build)
+
+# Patch vite.config.ts — set correct ports and enable proxy in preview mode
+step "Patching MemViz vite config for stack ports..."
+cat > "$MEMVIZ_DIR/client/vite.config.ts" << 'VITECONF'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+const BACKEND_PORT = process.env.MEMVIZ_BACKEND_PORT || '3001';
+const FRONTEND_PORT = process.env.MEMVIZ_FRONTEND_PORT || '8888';
+const proxyConfig = {
+  '/api': {
+    target: `http://127.0.0.1:${BACKEND_PORT}`,
+    changeOrigin: true,
+  },
+};
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: Number(FRONTEND_PORT),
+    host: '0.0.0.0',
+    proxy: proxyConfig,
+  },
+  preview: {
+    port: Number(FRONTEND_PORT),
+    host: '0.0.0.0',
+    proxy: proxyConfig,
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+  },
+});
+VITECONF
 info "MemViz installed & built (server + client)"
 
 # ═══════════════════════════════════════════════════════════════

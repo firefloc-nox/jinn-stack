@@ -164,11 +164,15 @@ start_service \
   "$_MEMVIZ_SERVER_CMD" \
   "$LOG_DIR/memviz-server.log"
 
-# 4. MemViz Client (frontend — uses preview if built, falls back to dev)
+# 4. MemViz Client (frontend)
+# The client uses relative /api/* calls that need proxying to the backend.
+# vite dev mode has a built-in proxy; for production we use vite preview.
+# We force port and host via CLI flags (override vite.config.ts defaults).
+_MEMVIZ_ENV="MEMVIZ_BACKEND_PORT=$MEMVIZ_BACKEND_PORT MEMVIZ_FRONTEND_PORT=$MEMVIZ_FRONTEND_PORT"
 if [ -d "$MEMVIZ_DIR/client/dist" ]; then
-  _MEMVIZ_CLIENT_CMD="cd '$MEMVIZ_DIR/client' && npx vite preview --port $MEMVIZ_FRONTEND_PORT --host"
+  _MEMVIZ_CLIENT_CMD="cd '$MEMVIZ_DIR/client' && $_MEMVIZ_ENV npx vite preview --port $MEMVIZ_FRONTEND_PORT --host 0.0.0.0"
 else
-  _MEMVIZ_CLIENT_CMD="cd '$MEMVIZ_DIR/client' && npx vite --port $MEMVIZ_FRONTEND_PORT --host"
+  _MEMVIZ_CLIENT_CMD="cd '$MEMVIZ_DIR/client' && $_MEMVIZ_ENV npx vite --port $MEMVIZ_FRONTEND_PORT --host 0.0.0.0"
 fi
 start_service \
   "MemViz Client" \

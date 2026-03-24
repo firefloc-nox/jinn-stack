@@ -119,7 +119,41 @@ if [ -d "$MEMVIZ_DIR/.git" ]; then
   step "Pulling latest..."
   git -C "$MEMVIZ_DIR" pull
   (cd "$MEMVIZ_DIR/server" && npm install && npm run build)
-  (cd "$MEMVIZ_DIR/client" && npm install && npm run build)
+  (cd "$MEMVIZ_DIR/client" && npm install && npx vite build)
+  # Re-apply vite config patch for correct ports and proxy
+  cat > "$MEMVIZ_DIR/client/vite.config.ts" << 'VITECONF'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+const BACKEND_PORT = process.env.MEMVIZ_BACKEND_PORT || '3001';
+const FRONTEND_PORT = process.env.MEMVIZ_FRONTEND_PORT || '8888';
+const proxyConfig = {
+  '/api': {
+    target: `http://127.0.0.1:${BACKEND_PORT}`,
+    changeOrigin: true,
+  },
+};
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: Number(FRONTEND_PORT),
+    host: '0.0.0.0',
+    proxy: proxyConfig,
+  },
+  preview: {
+    port: Number(FRONTEND_PORT),
+    host: '0.0.0.0',
+    proxy: proxyConfig,
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+  },
+});
+VITECONF
+  # Rebuild client with patched config
+  (cd "$MEMVIZ_DIR/client" && npm run build)
   info "MemViz updated"
 else
   warn "MemViz not found at $MEMVIZ_DIR — skipping"
