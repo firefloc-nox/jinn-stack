@@ -152,10 +152,11 @@ start_service \
 
 # 3. MemViz Server (backend — uses built dist if available, falls back to dev)
 _MEMVIZ_CORS="http://localhost:$MEMVIZ_FRONTEND_PORT,http://127.0.0.1:$MEMVIZ_FRONTEND_PORT,http://localhost:5173,http://127.0.0.1:5173"
+_MEMVIZ_ENV="PORT=$MEMVIZ_BACKEND_PORT CORS_ORIGINS='$_MEMVIZ_CORS' MEMORY_DB_PATH='$MCP_MEMORY_DB'"
 if [ -f "$MEMVIZ_DIR/server/dist/index.js" ]; then
-  _MEMVIZ_SERVER_CMD="cd '$MEMVIZ_DIR/server' && PORT=$MEMVIZ_BACKEND_PORT CORS_ORIGINS='$_MEMVIZ_CORS' node dist/index.js"
+  _MEMVIZ_SERVER_CMD="cd '$MEMVIZ_DIR/server' && $_MEMVIZ_ENV node dist/index.js"
 else
-  _MEMVIZ_SERVER_CMD="cd '$MEMVIZ_DIR/server' && PORT=$MEMVIZ_BACKEND_PORT CORS_ORIGINS='$_MEMVIZ_CORS' npm run dev"
+  _MEMVIZ_SERVER_CMD="cd '$MEMVIZ_DIR/server' && $_MEMVIZ_ENV npm run dev"
 fi
 start_service \
   "MemViz Server" \
