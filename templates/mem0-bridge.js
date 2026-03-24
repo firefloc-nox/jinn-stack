@@ -1,66 +1,68 @@
 /**
  * Jinn + Mem0 Bridge Plugin
  * Auto-stores agent responses and injects relevant memories
+ * via the MCP Memory Service (mcp-memory-service)
+ *
+ * Config (env vars or jinn config.yaml → plugins.mem0Bridge):
+ *   MEM0_MCP_URL  — MCP Memory Service HTTP endpoint (default: http://127.0.0.1:8200)
  */
 
-const fetch = require('node-fetch');
+const MEM0_MCP_URL = process.env.MEM0_MCP_URL || 'http://127.0.0.1:8200';
 
-const MEM0_API = process.env.MEM0_API || 'http://127.0.0.1:8001';
-const MEM0_DB = process.env.MEM0_DB || `${process.env.HOME}/.mem0/memory.db`;
+async function mpcCall(method, params) {
+  try {
+    const res = await fetch(`${MEM0_MCP_URL}/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: method, arguments: params } }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.result?.content?.[0]?.text ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function isMemoryAvailable() {
+  try {
+    const res = await fetch(`${MEM0_MCP_URL}/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+      signal: AbortSignal.timeout(3000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 module.exports = {
   name: 'mem0-bridge',
-  version: '1.0.0',
+  version: '2.0.0',
 
   async onBeforeAgentRun(agentId, prompt) {
+    const result = await mpcCall('memory_search', { query: prompt, limit: 5 });
+    if (!result) return prompt;
     try {
-      const searchResponse = await fetch(
-        `${MEM0_API}/search?q=${encodeURIComponent(prompt)}`,
-        { timeout: 3000 }
-      );
-      if (!searchResponse.ok) return prompt;
-      const memories = await searchResponse.json();
-      if (!Array.isArray(memories) || memories.length === 0) return prompt;
-      const context = memories.map(m => `- ${m.message || m.content}`).join('\n');
-      return `[RELEVANT MEMORIES]\n${context}\n\n[USER PROMPT]\n${prompt}`;
-    } catch (error) {
-      console.log(`[mem0-bridge] Search error (non-fatal): ${error.message}`);
+      // Extract memory summaries
+      const lines = result.split('\n').filter(l => l.startsWith('1.') || l.startsWith('2.') || l.startsWith('3.') || l.startsWith('4.') || l.startsWith('5.'));
+      if (lines.length === 0) return prompt;
+      return `[RELEVANT MEMORIES]\n${lines.join('\n')}\n\n[USER PROMPT]\n${prompt}`;
+    } catch {
       return prompt;
     }
   },
 
   async onAgentResponse(agentId, response) {
-    try {
-      const storeResponse = await fetch(`${MEM0_API}/memory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 3000,
-        body: JSON.stringify({
-          message: `[${agentId}] ${response.substring(0, 500)}`,
-          user_id: agentId,
-          tags: 'jinn-auto-stored'
-        })
-      });
-      if (!storeResponse.ok) console.log(`[mem0-bridge] Store failed: ${storeResponse.status}`);
-    } catch (error) {
-      console.log(`[mem0-bridge] Store error (non-fatal): ${error.message}`);
-    }
+    if (!response || response.length < 50) return;
+    await mpcCall('memory_store', {
+      content: `[${agentId}] ${response.substring(0, 500)}`,
+      metadata: { source: 'jinn-auto', agent: agentId },
+    });
   },
 
-  async onAgentError(agentId, error) {
-    try {
-      await fetch(`${MEM0_API}/memory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 2000,
-        body: JSON.stringify({
-          message: `[ERROR] ${agentId}: ${error.message}`,
-          user_id: 'jinn-errors',
-          tags: 'error'
-        })
-      });
-    } catch (e) {
-      console.log(`[mem0-bridge] Error store failed: ${e.message}`);
-    }
-  }
+  isMemoryAvailable,
 };
