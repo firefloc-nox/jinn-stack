@@ -37,7 +37,7 @@ echo -e "${NC}"
 echo -e "${YELLOW}This will remove the Jinn stack from your system.${NC}"
 echo "User data will be backed up to: $BACKUP_ROOT"
 echo ""
-read -rp "Continue? [y/N] " confirm
+read -rp "Continue? [y/N] " confirm </dev/tty
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
   echo "Aborted."
   exit 0
@@ -131,7 +131,7 @@ echo "  - $JINN_CLI_DIR (Jinn source code)"
 echo "  - $MEM0_HOME (Mem0 venv & data)"
 echo "  - $MEMVIZ_DIR (MemViz)"
 echo ""
-read -rp "Confirm removal? [y/N] " confirm2
+read -rp "Confirm removal? [y/N] " confirm2 </dev/tty
 if [[ ! "$confirm2" =~ ^[Yy]$ ]]; then
   echo "Removal cancelled. Backup remains at $BACKUP_ROOT"
   exit 0

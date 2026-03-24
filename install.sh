@@ -111,7 +111,7 @@ ask_install() {
     return 0
   fi
   echo ""
-  read -rp "  Install $name? [Y/n] " reply
+  read -rp "  Install $name? [Y/n] " reply </dev/tty
   [[ -z "$reply" || "$reply" =~ ^[Yy]$ ]]
 }
 
@@ -389,11 +389,11 @@ else
 fi
 info "MemViz repo ready"
 
-step "Installing server dependencies..."
-(cd "$MEMVIZ_DIR/server" && npm install)
-step "Installing client dependencies..."
-(cd "$MEMVIZ_DIR/client" && npm install)
-info "MemViz dependencies installed (server + client)"
+step "Installing & building server..."
+(cd "$MEMVIZ_DIR/server" && npm install && npm run build)
+step "Installing & building client..."
+(cd "$MEMVIZ_DIR/client" && npm install && npm run build)
+info "MemViz installed & built (server + client)"
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 5 — Scaffold ~/.jinn/
