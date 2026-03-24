@@ -150,20 +150,31 @@ start_service \
   "npx -y supergateway --stdio '${MEM0_VENV}/bin/python3 -m mcp_memory_service.server --db \"${MCP_MEMORY_DB}\"' --port $MCP_MEMORY_PORT --outputTransport streamableHttp" \
   "$LOG_DIR/memory-mcp.log"
 
-# 3. MemViz Server (backend)
+# 3. MemViz Server (backend — uses built dist if available, falls back to dev)
+_MEMVIZ_CORS="http://localhost:$MEMVIZ_FRONTEND_PORT,http://127.0.0.1:$MEMVIZ_FRONTEND_PORT,http://localhost:5173,http://127.0.0.1:5173"
+if [ -f "$MEMVIZ_DIR/server/dist/index.js" ]; then
+  _MEMVIZ_SERVER_CMD="cd '$MEMVIZ_DIR/server' && PORT=$MEMVIZ_BACKEND_PORT CORS_ORIGINS='$_MEMVIZ_CORS' node dist/index.js"
+else
+  _MEMVIZ_SERVER_CMD="cd '$MEMVIZ_DIR/server' && PORT=$MEMVIZ_BACKEND_PORT CORS_ORIGINS='$_MEMVIZ_CORS' npm run dev"
+fi
 start_service \
   "MemViz Server" \
   "$MEMVIZ_BACKEND_PORT" \
   "$PID_DIR/memviz-server.pid" \
-  "cd '$MEMVIZ_DIR/server' && npm run dev" \
+  "$_MEMVIZ_SERVER_CMD" \
   "$LOG_DIR/memviz-server.log"
 
-# 4. MemViz Client (frontend)
+# 4. MemViz Client (frontend — uses preview if built, falls back to dev)
+if [ -d "$MEMVIZ_DIR/client/dist" ]; then
+  _MEMVIZ_CLIENT_CMD="cd '$MEMVIZ_DIR/client' && npx vite preview --port $MEMVIZ_FRONTEND_PORT --host"
+else
+  _MEMVIZ_CLIENT_CMD="cd '$MEMVIZ_DIR/client' && npx vite --port $MEMVIZ_FRONTEND_PORT --host"
+fi
 start_service \
   "MemViz Client" \
   "$MEMVIZ_FRONTEND_PORT" \
   "$PID_DIR/memviz-client.pid" \
-  "cd '$MEMVIZ_DIR/client' && npm run dev" \
+  "$_MEMVIZ_CLIENT_CMD" \
   "$LOG_DIR/memviz-client.log"
 
 echo ""
