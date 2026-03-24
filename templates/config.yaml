@@ -1,0 +1,70 @@
+jinn:
+  version: 0.7.2
+gateway:
+  port: 7778
+  host: 0.0.0.0
+engines:
+  default: claude
+  claude:
+    bin: claude
+    model: opus
+    effortLevel: medium
+  codex:
+    bin: codex
+    model: o3
+  local:
+    url: "http://localhost:11434"
+    model: qwen3.5:9b
+sessions:
+  rateLimitStrategy: fallback
+  fallbackEngine: local
+connectors:
+  # Configure your connectors here
+  # discord:
+  #   botToken: YOUR_DISCORD_BOT_TOKEN
+  #   allowFrom:
+  #     - 'YOUR_DISCORD_USER_ID'
+portal:
+  portalName: Noxis
+  operatorName: OPERATOR_NAME
+  language: French
+logging:
+  file: true
+  stdout: true
+  level: info
+mcp:
+  fetch:
+    enabled: true
+  custom:
+    memory:
+      enabled: true
+      command: MEM0_VENV_PYTHON
+      args:
+        - '-m'
+        - 'mcp_memory_service.server'
+        - '--db'
+        - 'MCP_MEMORY_DB_PATH'
+kanban:
+  columns:
+    - id: backlog
+      title: Backlog
+    - id: rd
+      title: "R&D"
+    - id: rd-done
+      title: "R&D Done"
+    - id: dev-ready
+      title: Dev Ready
+    - id: dev
+      title: Dev
+    - id: dev-review
+      title: Dev Review
+    - id: test-ready
+      title: Test Ready
+    - id: test
+      title: Test
+    - id: test-passed
+      title: Test Passed
+    - id: done
+      title: Done
+    - id: blocked
+      title: Blocked

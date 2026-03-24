@@ -1,0 +1,23 @@
+{
+  "llm": {
+    "provider": "openai",
+    "config": {
+      "model": "gpt-4",
+      "api_key": "$OPENAI_API_KEY"
+    }
+  },
+  "embedder": {
+    "provider": "openai",
+    "config": {
+      "model": "text-embedding-3-small",
+      "api_key": "$OPENAI_API_KEY"
+    }
+  },
+  "vector_store": {
+    "provider": "sqlite",
+    "config": {
+      "db_path": "MEM0_DB_PATH"
+    }
+  },
+  "version": "0.0.16"
+}

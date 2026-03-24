@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "jinn-memory": {
+      "type": "streamable-http",
+      "url": "JINN_MEMORY_URL"
+    }
+  }
+}
