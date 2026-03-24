@@ -42,10 +42,45 @@ echo "  ╚═══════════════════════
 echo -e "${NC}"
 
 # ═══════════════════════════════════════════════════════════════
-# STEP 0 — Prerequisites
+# STEP 0 — Prerequisites (auto-detect & install)
 # ═══════════════════════════════════════════════════════════════
 section "Checking prerequisites"
 
+# ── OS & package manager detection ──
+OS="$(uname -s)"
+ARCH="$(uname -m)"
+PKG_MANAGER=""
+
+detect_pkg_manager() {
+  if [ "$OS" = "Darwin" ]; then
+    if command -v brew &>/dev/null; then
+      PKG_MANAGER="brew"
+    else
+      return 1
+    fi
+  elif [ "$OS" = "Linux" ]; then
+    if command -v apt-get &>/dev/null; then
+      PKG_MANAGER="apt"
+    elif command -v dnf &>/dev/null; then
+      PKG_MANAGER="dnf"
+    elif command -v pacman &>/dev/null; then
+      PKG_MANAGER="pacman"
+    elif command -v zypper &>/dev/null; then
+      PKG_MANAGER="zypper"
+    elif command -v apk &>/dev/null; then
+      PKG_MANAGER="apk"
+    else
+      return 1
+    fi
+  else
+    return 1
+  fi
+}
+
+detect_pkg_manager || true
+info "OS: $OS ($ARCH), package manager: ${PKG_MANAGER:-none detected}"
+
+# ── Helper functions ──
 check_cmd() {
   if command -v "$1" &>/dev/null; then
     info "$1 found: $(command -v "$1")"
@@ -69,36 +104,191 @@ check_version() {
   fi
 }
 
-PREREQS_OK=true
+# Ask user before installing
+ask_install() {
+  local name="$1"
+  if [ "${AUTO_INSTALL:-}" = "1" ]; then
+    return 0
+  fi
+  echo ""
+  read -rp "  Install $name? [Y/n] " reply
+  [[ -z "$reply" || "$reply" =~ ^[Yy]$ ]]
+}
+
+# ── Package install functions ──
+install_with_pkg() {
+  local pkg="$1"
+  case "$PKG_MANAGER" in
+    brew)   brew install "$pkg" ;;
+    apt)    sudo apt-get update -qq && sudo apt-get install -y "$pkg" ;;
+    dnf)    sudo dnf install -y "$pkg" ;;
+    pacman) sudo pacman -S --noconfirm "$pkg" ;;
+    zypper) sudo zypper install -y "$pkg" ;;
+    apk)    sudo apk add "$pkg" ;;
+    *)      return 1 ;;
+  esac
+}
+
+install_git() {
+  step "Installing git..."
+  case "$PKG_MANAGER" in
+    brew)   brew install git ;;
+    apt)    sudo apt-get update -qq && sudo apt-get install -y git ;;
+    dnf)    sudo dnf install -y git ;;
+    pacman) sudo pacman -S --noconfirm git ;;
+    *)      install_with_pkg git ;;
+  esac
+}
+
+install_node() {
+  step "Installing Node.js..."
+  if [ "$OS" = "Darwin" ] && [ "$PKG_MANAGER" = "brew" ]; then
+    brew install node
+  elif [ "$OS" = "Linux" ]; then
+    # Use NodeSource for a recent version
+    if command -v curl &>/dev/null; then
+      step "Using NodeSource setup script for Node.js 22.x..."
+      curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - 2>/dev/null
+      case "$PKG_MANAGER" in
+        apt)    sudo apt-get install -y nodejs ;;
+        dnf)    sudo dnf install -y nodejs ;;
+        *)      install_with_pkg nodejs ;;
+      esac
+    else
+      install_with_pkg nodejs
+    fi
+  else
+    return 1
+  fi
+}
+
+install_python() {
+  step "Installing Python..."
+  case "$PKG_MANAGER" in
+    brew)   brew install python@3.13 ;;
+    apt)    sudo apt-get update -qq && sudo apt-get install -y python3 python3-venv python3-pip ;;
+    dnf)    sudo dnf install -y python3 python3-pip ;;
+    pacman) sudo pacman -S --noconfirm python python-pip ;;
+    *)      install_with_pkg python3 ;;
+  esac
+}
+
+install_pnpm() {
+  step "Installing pnpm..."
+  if command -v npm &>/dev/null; then
+    npm install -g pnpm
+  elif command -v corepack &>/dev/null; then
+    corepack enable
+    corepack prepare pnpm@latest --activate
+  else
+    curl -fsSL https://get.pnpm.io/install.sh | sh -
+    # Source env for current session
+    export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
+    export PATH="$PNPM_HOME:$PATH"
+  fi
+}
+
+install_homebrew() {
+  step "Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  # Source brew for current session
+  if [ -f /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [ -f /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+  PKG_MANAGER="brew"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# Run prerequisite checks with auto-install offers
+# ═══════════════════════════════════════════════════════════════
+
+MISSING=()
+
+# macOS without Homebrew — offer to install it first
+if [ "$OS" = "Darwin" ] && [ -z "$PKG_MANAGER" ]; then
+  warn "Homebrew not found (recommended for macOS)"
+  if ask_install "Homebrew (package manager for macOS)"; then
+    install_homebrew
+    info "Homebrew installed"
+  fi
+fi
 
 # Git
-check_cmd git || PREREQS_OK=false
+if ! check_cmd git; then
+  if [ -n "$PKG_MANAGER" ] && ask_install "git"; then
+    install_git && info "git installed" || MISSING+=("git")
+  else
+    MISSING+=("git")
+  fi
+fi
 
 # Node >= 20
-if check_cmd node; then
+if command -v node &>/dev/null; then
   NODE_VER=$(node -v | sed 's/^v//')
-  check_version "node" "20.0.0" "$NODE_VER" || PREREQS_OK=false
+  if ! check_version "node" "20.0.0" "$NODE_VER"; then
+    warn "Node.js $NODE_VER is too old (need >= 20)"
+    if [ -n "$PKG_MANAGER" ] && ask_install "Node.js 22.x (upgrade)"; then
+      install_node && info "Node.js upgraded" || MISSING+=("node>=20")
+    else
+      MISSING+=("node>=20")
+    fi
+  fi
 else
-  PREREQS_OK=false
+  if [ -n "$PKG_MANAGER" ] && ask_install "Node.js 22.x"; then
+    install_node && info "Node.js installed" || MISSING+=("node>=20")
+  else
+    MISSING+=("node>=20")
+  fi
+fi
+
+# Python >= 3.11
+if command -v python3 &>/dev/null; then
+  PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')")
+  if ! check_version "python3" "3.11.0" "$PY_VER"; then
+    warn "Python $PY_VER is too old (need >= 3.11)"
+    if [ -n "$PKG_MANAGER" ] && ask_install "Python 3.13 (upgrade)"; then
+      install_python && info "Python upgraded" || MISSING+=("python>=3.11")
+    else
+      MISSING+=("python>=3.11")
+    fi
+  fi
+else
+  if [ -n "$PKG_MANAGER" ] && ask_install "Python 3"; then
+    install_python && info "Python installed" || MISSING+=("python>=3.11")
+  else
+    MISSING+=("python>=3.11")
+  fi
 fi
 
 # pnpm
-check_cmd pnpm || PREREQS_OK=false
-
-# Python >= 3.11
-if check_cmd python3; then
-  PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')")
-  check_version "python3" "3.11.0" "$PY_VER" || PREREQS_OK=false
-else
-  PREREQS_OK=false
+if ! check_cmd pnpm; then
+  if ask_install "pnpm"; then
+    install_pnpm && info "pnpm installed" || MISSING+=("pnpm")
+  else
+    MISSING+=("pnpm")
+  fi
 fi
 
-# npm (for MemViz)
-check_cmd npm || PREREQS_OK=false
-
-if [ "$PREREQS_OK" = false ]; then
-  fatal "Missing prerequisites. Install them and re-run."
+# npm (comes with node, but check)
+if ! check_cmd npm; then
+  MISSING+=("npm (should come with Node.js)")
 fi
+
+# ── Final check ──
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo ""
+  err "Missing prerequisites that could not be installed:"
+  for m in "${MISSING[@]}"; do
+    echo "    - $m"
+  done
+  echo ""
+  echo "  Install them manually and re-run this script."
+  exit 1
+fi
+
+info "All prerequisites satisfied"
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 1 — Create directories
