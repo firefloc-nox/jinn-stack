@@ -505,7 +505,7 @@ done
 info "Agents skill symlinks updated"
 
 # ═══════════════════════════════════════════════════════════════
-# DONE
+# STEP 8 — Start services & launch onboarding
 # ═══════════════════════════════════════════════════════════════
 echo ""
 echo -e "${GREEN}${BOLD}  Installation complete!${NC}"
@@ -516,9 +516,57 @@ echo "    Mem0 + MCP     $MEM0_VENV"
 echo "    MemViz         $MEMVIZ_DIR"
 echo "    Config         $JINN_HOME/"
 echo ""
-echo "  Next steps:"
-echo "    1. Edit $JINN_HOME/config.yaml (connectors, portal name)"
-echo "    2. Edit $MEM0_HOME/config.json (API key)"
-echo "    3. Start services: $JINN_HOME/start.sh"
-echo "    4. Open http://localhost:7778 for the gateway"
+
+# Start services
+section "Starting services"
+bash "$JINN_HOME/start.sh"
+
+# Wait for gateway to be ready
+step "Waiting for gateway..."
+READY=false
+for i in $(seq 1 15); do
+  if curl -sf "http://localhost:${GATEWAY_PORT:-7778}/api/status" &>/dev/null; then
+    READY=true
+    break
+  fi
+  sleep 1
+done
+
+if [ "$READY" = true ]; then
+  info "Gateway is up"
+
+  # Launch onboarding session
+  section "Welcome to Noxis"
+  echo ""
+  echo -e "  ${CYAN}Starting onboarding — Noxis will get to know you.${NC}"
+  echo "  Open ${BOLD}http://localhost:${GATEWAY_PORT:-7778}${NC} to continue in the web UI."
+  echo ""
+
+  # Create onboarding session via API
+  ONBOARD_RESP=$(curl -sf -X POST "http://localhost:${GATEWAY_PORT:-7778}/api/sessions" \
+    -H 'Content-Type: application/json' \
+    -d '{"prompt": "/onboarding"}' 2>/dev/null || echo "")
+
+  if [ -n "$ONBOARD_RESP" ]; then
+    ONBOARD_ID=$(echo "$ONBOARD_RESP" | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+    if [ -n "$ONBOARD_ID" ]; then
+      info "Onboarding session started (ID: $ONBOARD_ID)"
+      echo ""
+      echo -e "  ${BOLD}Go to http://localhost:${GATEWAY_PORT:-7778} to complete the setup.${NC}"
+    else
+      info "Onboarding session created"
+    fi
+  else
+    warn "Could not auto-start onboarding — start it manually with /onboarding"
+  fi
+else
+  warn "Gateway didn't start in time — check logs at $JINN_HOME/logs/"
+  echo ""
+  echo "  Manual steps:"
+  echo "    1. Edit $JINN_HOME/config.yaml (connectors, portal name)"
+  echo "    2. Edit $MEM0_HOME/config.json (API key)"
+  echo "    3. Start services: $JINN_HOME/start.sh"
+  echo "    4. Open http://localhost:${GATEWAY_PORT:-7778}"
+fi
+
 echo ""
