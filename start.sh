@@ -34,6 +34,56 @@ err()   { echo -e "${RED}[err]${NC} $1"; }
 
 mkdir -p "$PID_DIR" "$LOG_DIR"
 
+# ── Kill residual stack processes & free ports ──
+echo -e "${BOLD}Cleaning up residual processes...${NC}"
+STACK_PORTS=("$GATEWAY_PORT" "$MCP_MEMORY_PORT" "$MEMVIZ_BACKEND_PORT" "$MEMVIZ_FRONTEND_PORT")
+STACK_PATTERNS=("jimmy" "mcp.memory" "mcp-memory-service" "memviz" "supergateway")
+
+for port in "${STACK_PORTS[@]}"; do
+  if command -v lsof &>/dev/null; then
+    pids=$(lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true)
+  elif command -v ss &>/dev/null; then
+    pids=$(ss -tlnp "sport = :$port" 2>/dev/null | grep -oP 'pid=\K[0-9]+' || true)
+  else
+    pids=""
+  fi
+  for pid in $pids; do
+    warn "Killing process $pid on port $port"
+    kill "$pid" 2>/dev/null || true
+  done
+done
+
+for pattern in "${STACK_PATTERNS[@]}"; do
+  pids=$(pgrep -f "$pattern" 2>/dev/null || true)
+  for pid in $pids; do
+    [ "$pid" = "$$" ] && continue
+    kill "$pid" 2>/dev/null || true
+  done
+done
+
+sleep 1
+
+# Force-kill stragglers
+for port in "${STACK_PORTS[@]}"; do
+  if command -v lsof &>/dev/null; then
+    pids=$(lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true)
+    for pid in $pids; do
+      kill -9 "$pid" 2>/dev/null || true
+    done
+  fi
+done
+
+# Clean stale PID files
+for pidfile in "$PID_DIR"/*.pid; do
+  [ -f "$pidfile" ] || continue
+  pid=$(cat "$pidfile")
+  if ! kill -0 "$pid" 2>/dev/null; then
+    rm -f "$pidfile"
+  fi
+done
+
+info "Ports cleared"
+
 is_port_used() {
   if command -v lsof &>/dev/null; then
     lsof -ti :"$1" -sTCP:LISTEN &>/dev/null

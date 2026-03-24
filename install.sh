@@ -42,7 +42,74 @@ echo "  ╚═══════════════════════
 echo -e "${NC}"
 
 # ═══════════════════════════════════════════════════════════════
-# STEP 0 — Prerequisites (auto-detect & install)
+# STEP 0a — Kill residual stack processes & free ports
+# ═══════════════════════════════════════════════════════════════
+section "Cleaning up residual processes"
+
+STACK_PORTS=(7778 8200 3001 8888)
+STACK_PATTERNS=("jimmy" "mcp.memory" "mcp-memory-service" "memviz" "supergateway")
+
+# Kill processes on stack ports
+for port in "${STACK_PORTS[@]}"; do
+  if command -v lsof &>/dev/null; then
+    pids=$(lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true)
+  elif command -v ss &>/dev/null; then
+    pids=$(ss -tlnp "sport = :$port" 2>/dev/null | grep -oP 'pid=\K[0-9]+' || true)
+  else
+    pids=""
+  fi
+  if [ -n "$pids" ]; then
+    for pid in $pids; do
+      step "Killing process $pid on port $port"
+      kill "$pid" 2>/dev/null || true
+    done
+  fi
+done
+
+# Kill known stack process patterns
+for pattern in "${STACK_PATTERNS[@]}"; do
+  pids=$(pgrep -f "$pattern" 2>/dev/null || true)
+  if [ -n "$pids" ]; then
+    for pid in $pids; do
+      # Don't kill ourselves
+      [ "$pid" = "$$" ] && continue
+      step "Killing residual process $pid ($pattern)"
+      kill "$pid" 2>/dev/null || true
+    done
+  fi
+done
+
+# Wait for ports to free up
+sleep 1
+
+# Force-kill anything still hanging on stack ports
+for port in "${STACK_PORTS[@]}"; do
+  if command -v lsof &>/dev/null; then
+    pids=$(lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+      for pid in $pids; do
+        warn "Force-killing stubborn process $pid on port $port"
+        kill -9 "$pid" 2>/dev/null || true
+      done
+    fi
+  fi
+done
+
+# Clean stale PID files
+if [ -d "$JINN_HOME/tmp" ]; then
+  for pidfile in "$JINN_HOME"/tmp/*.pid; do
+    [ -f "$pidfile" ] || continue
+    pid=$(cat "$pidfile")
+    if ! kill -0 "$pid" 2>/dev/null; then
+      rm -f "$pidfile"
+    fi
+  done
+fi
+
+info "Ports ${STACK_PORTS[*]} cleared"
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 0b — Prerequisites (auto-detect & install)
 # ═══════════════════════════════════════════════════════════════
 section "Checking prerequisites"
 
