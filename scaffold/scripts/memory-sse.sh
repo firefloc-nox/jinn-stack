@@ -3,7 +3,7 @@
 # Accessible via Tailscale serve for remote Claude Code instances
 
 JINN_HOME="${JINN_HOME:-$HOME/.jinn}"
-MEM0_PYTHON="${MEM0_PYTHON:-$HOME/.mem0/venv/bin/python3}"
+MEM0_PYTHON="${MEM0_PYTHON:-${JINN_HOME:-$HOME/.jinn}/src/mem0/venv/bin/python3}"
 DB_PATH="${MCP_MEMORY_DB_PATH:-$HOME/Library/Application Support/mcp-memory/sqlite_vec.db}"
 MEM0_PORT="${MEM0_PORT:-8200}"
 

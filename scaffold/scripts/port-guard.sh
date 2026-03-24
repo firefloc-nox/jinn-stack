@@ -38,11 +38,11 @@ declare -A STDIO_EXPECT=(
 )
 
 declare -A STDIO_STDERR=(
-  ["com.mem0.mcp-server"]="$HOME/.mem0/mcp-server-error.log"
+  ["com.mem0.mcp-server"]="${JINN_HOME:-$HOME/.jinn}/logs/mcp-server-error.log"
 )
 
 declare -A STDIO_STDOUT=(
-  ["com.mem0.mcp-server"]="$HOME/.mem0/mcp-server.log"
+  ["com.mem0.mcp-server"]="${JINN_HOME:-$HOME/.jinn}/logs/mcp-server.log"
 )
 
 # --- Logs for TCP services ---

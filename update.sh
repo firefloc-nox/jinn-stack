@@ -9,10 +9,10 @@ set -euo pipefail
 
 # ── Paths ──
 JINN_HOME="${JINN_HOME:-$HOME/.jinn}"
-JINN_CLI_DIR="${JINN_CLI_DIR:-$HOME/dev/jinn-cli}"
-MEM0_HOME="${MEM0_HOME:-$HOME/.mem0}"
+JINN_CLI_DIR="${JINN_CLI_DIR:-$JINN_HOME/src/jinn-cli}"
+MEM0_HOME="${MEM0_HOME:-$JINN_HOME/src/mem0}"
 MEM0_VENV="${MEM0_HOME}/venv"
-MEMVIZ_DIR="${MEMVIZ_DIR:-$HOME/.openclaw/workspace/memviz}"
+MEMVIZ_DIR="${MEMVIZ_DIR:-$JINN_HOME/src/memviz}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="$JINN_HOME/backups/update-$(date +%Y%m%d-%H%M%S)"
 

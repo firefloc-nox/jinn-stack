@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-STACK_DIR="${JINN_STACK_DIR:-$HOME/dev/jinn-stack}"
+STACK_DIR="${JINN_STACK_DIR:-$HOME/.jinn/src/jinn-stack}"
 
 echo "Jinn Stack — Bootstrap"
 echo ""

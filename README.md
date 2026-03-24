@@ -97,9 +97,9 @@ All paths are configurable via environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `JINN_HOME` | `~/.jinn` | Jinn home directory |
-| `JINN_CLI_DIR` | `~/dev/jinn-cli` | Jinn source code |
-| `MEM0_HOME` | `~/.mem0` | Mem0 home directory |
-| `MEMVIZ_DIR` | `~/.openclaw/workspace/memviz` | MemViz directory |
+| `JINN_CLI_DIR` | `~/.jinn/src/jinn-cli` | Jinn source code |
+| `MEM0_HOME` | `~/.jinn/src/mem0` | Mem0 venv & data |
+| `MEMVIZ_DIR` | `~/.jinn/src/memviz` | MemViz directory |
 | `GATEWAY_PORT` | `7778` | Gateway port |
 | `MCP_MEMORY_PORT` | `8200` | MCP memory port |
 

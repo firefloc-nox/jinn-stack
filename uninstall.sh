@@ -8,9 +8,9 @@ set -euo pipefail
 
 # ── Paths ──
 JINN_HOME="${JINN_HOME:-$HOME/.jinn}"
-JINN_CLI_DIR="${JINN_CLI_DIR:-$HOME/dev/jinn-cli}"
-MEM0_HOME="${MEM0_HOME:-$HOME/.mem0}"
-MEMVIZ_DIR="${MEMVIZ_DIR:-$HOME/.openclaw/workspace/memviz}"
+JINN_CLI_DIR="${JINN_CLI_DIR:-$JINN_HOME/src/jinn-cli}"
+MEM0_HOME="${MEM0_HOME:-$JINN_HOME/src/mem0}"
+MEMVIZ_DIR="${MEMVIZ_DIR:-$JINN_HOME/src/memviz}"
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/jinn-backup-$(date +%Y%m%d-%H%M%S)}"
 
 # ── Colors ──
