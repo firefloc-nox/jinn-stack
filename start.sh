@@ -35,7 +35,14 @@ err()   { echo -e "${RED}[err]${NC} $1"; }
 mkdir -p "$PID_DIR" "$LOG_DIR"
 
 is_port_used() {
-  lsof -ti :"$1" -sTCP:LISTEN &>/dev/null
+  if command -v lsof &>/dev/null; then
+    lsof -ti :"$1" -sTCP:LISTEN &>/dev/null
+  elif command -v ss &>/dev/null; then
+    ss -tlnp | grep -q ":$1 "
+  else
+    # Fallback: try to bind the port
+    (echo >/dev/tcp/127.0.0.1/"$1") 2>/dev/null
+  fi
 }
 
 start_service() {
@@ -47,9 +54,7 @@ start_service() {
   fi
 
   if is_port_used "$port"; then
-    local existing_pid
-    existing_pid=$(lsof -ti :"$port" -sTCP:LISTEN | head -1)
-    warn "$name: port $port already in use by PID $existing_pid"
+    warn "$name: port $port already in use"
     return 1
   fi
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Jinn Stack — One-line bootstrap
-# Usage: bash <(curl -sL https://raw.githubusercontent.com/firefloc-nox/jinn-stack/main/bootstrap.sh)
+# Usage: curl -sL https://raw.githubusercontent.com/firefloc-nox/jinn-stack/main/bootstrap.sh | bash
 
 set -euo pipefail
 

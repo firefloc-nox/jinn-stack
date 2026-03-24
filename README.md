@@ -22,6 +22,11 @@ Full installation script for the Noxis AI gateway ecosystem.
 ## Quick Start
 
 ```bash
+curl -sL https://raw.githubusercontent.com/firefloc-nox/jinn-stack/main/bootstrap.sh | bash
+```
+
+Or manually:
+```bash
 git clone https://github.com/firefloc-nox/jinn-stack.git ~/dev/jinn-stack
 cd ~/dev/jinn-stack
 bash install.sh
