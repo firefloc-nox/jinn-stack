@@ -112,7 +112,8 @@ section "Updating MemViz"
 if [ -d "$MEMVIZ_DIR/.git" ]; then
   step "Pulling latest..."
   git -C "$MEMVIZ_DIR" pull
-  (cd "$MEMVIZ_DIR" && npm install)
+  (cd "$MEMVIZ_DIR/server" && npm install)
+  (cd "$MEMVIZ_DIR/client" && npm install)
   info "MemViz updated"
 else
   warn "MemViz not found at $MEMVIZ_DIR — skipping"

@@ -389,9 +389,11 @@ else
 fi
 info "MemViz repo ready"
 
-step "Installing dependencies (npm)..."
-(cd "$MEMVIZ_DIR" && npm install)
-info "MemViz dependencies installed"
+step "Installing server dependencies..."
+(cd "$MEMVIZ_DIR/server" && npm install)
+step "Installing client dependencies..."
+(cd "$MEMVIZ_DIR/client" && npm install)
+info "MemViz dependencies installed (server + client)"
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 5 — Scaffold ~/.jinn/

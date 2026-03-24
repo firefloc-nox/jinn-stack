@@ -53,9 +53,10 @@ stop_service() {
 echo -e "${BOLD}Stopping Jinn Stack...${NC}"
 echo ""
 
-stop_service "Jinn Gateway" "$PID_DIR/gateway.pid"
-stop_service "MCP Memory"   "$PID_DIR/mcp-memory.pid"
-stop_service "MemViz"       "$PID_DIR/memviz.pid"
+stop_service "Jinn Gateway"   "$PID_DIR/gateway.pid"
+stop_service "MCP Memory"     "$PID_DIR/mcp-memory.pid"
+stop_service "MemViz Server"  "$PID_DIR/memviz-server.pid"
+stop_service "MemViz Client"  "$PID_DIR/memviz-client.pid"
 
 echo ""
 echo -e "${GREEN}${BOLD}All services stopped.${NC}"

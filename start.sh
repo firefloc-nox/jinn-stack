@@ -100,13 +100,21 @@ start_service \
   "npx -y supergateway --stdio '${MEM0_VENV}/bin/python3 -m mcp_memory_service.server --db \"${MCP_MEMORY_DB}\"' --port $MCP_MEMORY_PORT --outputTransport streamableHttp" \
   "$LOG_DIR/memory-mcp.log"
 
-# 3. MemViz (backend + frontend via npm start)
+# 3. MemViz Server (backend)
 start_service \
-  "MemViz" \
+  "MemViz Server" \
   "$MEMVIZ_BACKEND_PORT" \
-  "$PID_DIR/memviz.pid" \
-  "cd '$MEMVIZ_DIR' && npm start" \
-  "$LOG_DIR/memviz.log"
+  "$PID_DIR/memviz-server.pid" \
+  "cd '$MEMVIZ_DIR/server' && npm run dev" \
+  "$LOG_DIR/memviz-server.log"
+
+# 4. MemViz Client (frontend)
+start_service \
+  "MemViz Client" \
+  "$MEMVIZ_FRONTEND_PORT" \
+  "$PID_DIR/memviz-client.pid" \
+  "cd '$MEMVIZ_DIR/client' && npm run dev" \
+  "$LOG_DIR/memviz-client.log"
 
 echo ""
 echo -e "${GREEN}${BOLD}All services started.${NC}"
