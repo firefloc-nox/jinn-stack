@@ -424,6 +424,48 @@ if [ ! -f "$JINN_CLI_DIR/packages/jimmy/dist/web/index.html" ]; then
   info "WebUI copied to dist/web"
 fi
 
+# Link 'jinn' CLI command globally
+step "Linking jinn CLI to PATH..."
+JINN_BIN="$JINN_CLI_DIR/packages/jimmy/dist/bin/jimmy.js"
+if [ -f "$JINN_BIN" ]; then
+  # Determine a writable bin directory on PATH
+  _BIN_DIR=""
+  for _candidate in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
+    if echo "$PATH" | tr ':' '\n' | grep -qx "$_candidate" 2>/dev/null; then
+      _BIN_DIR="$_candidate"
+      break
+    fi
+  done
+  # Fallback: use ~/.local/bin and add to PATH
+  if [ -z "$_BIN_DIR" ]; then
+    _BIN_DIR="$HOME/.local/bin"
+  fi
+  mkdir -p "$_BIN_DIR"
+  # Create wrapper script (more portable than symlink for node)
+  cat > "$_BIN_DIR/jinn" << JINNCLI
+#!/usr/bin/env bash
+exec node "$JINN_BIN" "\$@"
+JINNCLI
+  chmod +x "$_BIN_DIR/jinn"
+  info "jinn CLI installed at $_BIN_DIR/jinn"
+  # Ensure ~/.local/bin is in PATH for this session and future shells
+  if ! echo "$PATH" | tr ':' '\n' | grep -qx "$_BIN_DIR" 2>/dev/null; then
+    export PATH="$_BIN_DIR:$PATH"
+    # Add to shell profile if not already there
+    _SHELL_RC=""
+    if [ -f "$HOME/.bashrc" ]; then _SHELL_RC="$HOME/.bashrc"
+    elif [ -f "$HOME/.zshrc" ]; then _SHELL_RC="$HOME/.zshrc"
+    elif [ -f "$HOME/.profile" ]; then _SHELL_RC="$HOME/.profile"
+    fi
+    if [ -n "$_SHELL_RC" ] && ! grep -q "$_BIN_DIR" "$_SHELL_RC" 2>/dev/null; then
+      echo "export PATH=\"$_BIN_DIR:\$PATH\"" >> "$_SHELL_RC"
+      info "Added $_BIN_DIR to PATH in $_SHELL_RC"
+    fi
+  fi
+else
+  warn "jinn binary not found at $JINN_BIN — skipping CLI link"
+fi
+
 # ═══════════════════════════════════════════════════════════════
 # STEP 3 — Setup Mem0 + MCP Memory Service
 # ═══════════════════════════════════════════════════════════════
