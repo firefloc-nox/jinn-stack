@@ -7,6 +7,9 @@
 
 set -euo pipefail
 
+# Ensure CWD is valid — piped curl may inherit a deleted/nonexistent directory
+cd "$HOME"
+
 JINN_HOME="${JINN_HOME:-$HOME/.jinn}"
 STACK_DIR="${JINN_STACK_DIR:-$JINN_HOME/src/jinn-stack}"
 

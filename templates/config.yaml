@@ -1,5 +1,5 @@
 jinn:
-  version: 0.7.2
+  version: 0.8.0
 gateway:
   port: 7778
   host: 0.0.0.0
@@ -7,7 +7,7 @@ engines:
   default: claude
   claude:
     bin: claude
-    model: opus
+    model: claude-haiku-4-5-20251001
     effortLevel: medium
   codex:
     bin: codex
@@ -28,6 +28,7 @@ portal:
   portalName: Noxis
   operatorName: OPERATOR_NAME
   language: French
+  onboarded: true
 logging:
   file: true
   stdout: true

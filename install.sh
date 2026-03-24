@@ -8,6 +8,9 @@
 
 set -euo pipefail
 
+# Ensure CWD is valid (piped curl or deleted directory)
+cd "$HOME"
+
 # ── Paths (configurable via env) ──
 JINN_HOME="${JINN_HOME:-$HOME/.jinn}"
 JINN_CLI_DIR="${JINN_CLI_DIR:-$JINN_HOME/src/jinn-cli}"
