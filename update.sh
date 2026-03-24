@@ -87,8 +87,14 @@ step "Installing dependencies..."
 (cd "$JINN_CLI_DIR" && pnpm install --frozen-lockfile 2>/dev/null || pnpm install)
 info "Dependencies installed"
 
-step "Rebuilding..."
-(cd "$JINN_CLI_DIR" && pnpm turbo build)
+step "Building WebUI..."
+(cd "$JINN_CLI_DIR" && pnpm --filter @jinn/web build)
+step "Building Gateway..."
+(cd "$JINN_CLI_DIR" && pnpm --filter jinn-cli build)
+if [ ! -f "$JINN_CLI_DIR/packages/jimmy/dist/web/index.html" ]; then
+  mkdir -p "$JINN_CLI_DIR/packages/jimmy/dist/web"
+  cp -r "$JINN_CLI_DIR/packages/web/out/"* "$JINN_CLI_DIR/packages/jimmy/dist/web/"
+fi
 info "Jinn Gateway rebuilt"
 
 # ═══════════════════════════════════════════════════════════════

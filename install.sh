@@ -408,9 +408,21 @@ step "Installing dependencies (pnpm)..."
 (cd "$JINN_CLI_DIR" && pnpm install --frozen-lockfile 2>/dev/null || pnpm install)
 info "Dependencies installed"
 
-step "Building (pnpm turbo build)..."
-(cd "$JINN_CLI_DIR" && pnpm turbo build)
-info "Jinn Gateway built"
+step "Building WebUI (Next.js)..."
+(cd "$JINN_CLI_DIR" && pnpm --filter @jinn/web build)
+info "WebUI built"
+
+step "Building Gateway (jimmy)..."
+(cd "$JINN_CLI_DIR" && pnpm --filter jinn-cli build)
+info "Gateway built"
+
+# Verify the web UI was bundled into jimmy
+if [ ! -f "$JINN_CLI_DIR/packages/jimmy/dist/web/index.html" ]; then
+  warn "WebUI not found in dist — copying manually"
+  mkdir -p "$JINN_CLI_DIR/packages/jimmy/dist/web"
+  cp -r "$JINN_CLI_DIR/packages/web/out/"* "$JINN_CLI_DIR/packages/jimmy/dist/web/"
+  info "WebUI copied to dist/web"
+fi
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 3 — Setup Mem0 + MCP Memory Service
@@ -601,41 +613,37 @@ for i in $(seq 1 15); do
   sleep 1
 done
 
+WEBUI_URL="http://localhost:${GATEWAY_PORT:-7778}"
+
 if [ "$READY" = true ]; then
   info "Gateway is up"
 
-  # Launch onboarding session
-  section "Welcome to Noxis"
-  echo ""
-  echo -e "  ${CYAN}Starting onboarding — Noxis will get to know you.${NC}"
-  echo "  Open ${BOLD}http://localhost:${GATEWAY_PORT:-7778}${NC} to continue in the web UI."
-  echo ""
-
   # Create onboarding session via API
-  ONBOARD_RESP=$(curl -sf -X POST "http://localhost:${GATEWAY_PORT:-7778}/api/sessions" \
+  ONBOARD_RESP=$(curl -sf -X POST "${WEBUI_URL}/api/sessions" \
     -H 'Content-Type: application/json' \
     -d '{"prompt": "/onboarding"}' 2>/dev/null || echo "")
 
-  if [ -n "$ONBOARD_RESP" ]; then
-    ONBOARD_ID=$(echo "$ONBOARD_RESP" | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
-    if [ -n "$ONBOARD_ID" ]; then
-      info "Onboarding session started (ID: $ONBOARD_ID)"
-      echo ""
-      echo -e "  ${BOLD}Go to http://localhost:${GATEWAY_PORT:-7778} to complete the setup.${NC}"
-    else
-      info "Onboarding session created"
-    fi
-  else
-    warn "Could not auto-start onboarding — start it manually with /onboarding"
+  echo ""
+  echo -e "  ${GREEN}${BOLD}Installation complete!${NC}"
+  echo ""
+  echo "  Open the Web UI to get started:"
+  echo ""
+  echo "    ${WEBUI_URL}"
+  echo ""
+
+  # Try to auto-open in browser
+  if command -v open &>/dev/null; then
+    open "$WEBUI_URL" 2>/dev/null || true
+  elif command -v xdg-open &>/dev/null; then
+    xdg-open "$WEBUI_URL" 2>/dev/null || true
   fi
 else
   warn "Gateway didn't start in time — check logs at $JINN_HOME/logs/"
   echo ""
   echo "  Manual steps:"
-  echo "    1. Edit $JINN_HOME/config.yaml (connectors, portal name)"
-  echo "    2. Edit $MEM0_HOME/config.json (API key)"
-  echo "    3. Start services: $JINN_HOME/start.sh"
-  echo "    4. Open http://localhost:${GATEWAY_PORT:-7778}"
+  echo "    1. Edit $JINN_HOME/config.yaml"
+  echo "    2. Start services: $JINN_HOME/start.sh"
+  echo "    3. Open ${WEBUI_URL}"
 fi
 
 echo ""
