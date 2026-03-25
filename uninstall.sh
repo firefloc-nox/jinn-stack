@@ -65,7 +65,7 @@ get_port_pids() {
           }
         }' || true
   elif command -v fuser &>/dev/null; then
-    fuser "${port}/tcp" 2>/dev/null | tr ' ' '\n' | grep -v '^$' || true
+    fuser "${port}/tcp" 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+$' || true
   fi
 }
 
