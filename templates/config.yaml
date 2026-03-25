@@ -15,6 +15,7 @@ engines:
   local:
     url: "http://localhost:11434"
     model: qwen3.5:9b
+    maxContextChars: 12000
 sessions:
   rateLimitStrategy: fallback
   fallbackEngine: local
