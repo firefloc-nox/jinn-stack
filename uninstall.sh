@@ -43,24 +43,59 @@ if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
   exit 0
 fi
 
+# ── Ports ──
+GATEWAY_PORT="${GATEWAY_PORT:-7778}"
+MCP_MEMORY_PORT="${MCP_MEMORY_PORT:-8200}"
+MEMVIZ_BACKEND_PORT="${MEMVIZ_BACKEND_PORT:-3001}"
+MEMVIZ_FRONTEND_PORT="${MEMVIZ_FRONTEND_PORT:-8888}"
+STACK_PORTS=("$GATEWAY_PORT" "$MCP_MEMORY_PORT" "$MEMVIZ_BACKEND_PORT" "$MEMVIZ_FRONTEND_PORT")
+
+get_port_pids() {
+  local port="$1"
+  if command -v lsof &>/dev/null; then
+    lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true
+  elif command -v ss &>/dev/null; then
+    ss -tlnp "sport = :$port" 2>/dev/null | grep -oP 'pid=\K[0-9]+' || true
+  fi
+}
+
 # ═══════════════════════════════════════════════════════════════
 # STEP 1 — Stop services
 # ═══════════════════════════════════════════════════════════════
 section "Stopping services"
 
+# Try stop.sh first (graceful + port-based)
 if [ -f "$JINN_HOME/stop.sh" ]; then
   bash "$JINN_HOME/stop.sh" 2>/dev/null || true
-  info "Services stopped"
-else
-  # Manual kill by PID files
-  for pidfile in "$JINN_HOME/tmp/"*.pid; do
-    [ -f "$pidfile" ] || continue
-    pid=$(cat "$pidfile")
-    kill "$pid" 2>/dev/null || true
-    rm -f "$pidfile"
-  done
-  info "Processes cleaned up"
 fi
+
+# Manual kill by PID files (fallback if stop.sh was missing or failed)
+for pidfile in "$JINN_HOME/tmp/"*.pid; do
+  [ -f "$pidfile" ] || continue
+  pid=$(cat "$pidfile")
+  kill "$pid" 2>/dev/null || true
+  rm -f "$pidfile"
+done
+
+# Kill by process patterns
+for pattern in jimmy mcp.memory mcp-memory-service memviz supergateway; do
+  pids=$(pgrep -f "$pattern" 2>/dev/null || true)
+  for pid in $pids; do
+    [ "$pid" = "$$" ] && continue
+    kill "$pid" 2>/dev/null || true
+  done
+done
+
+# Final safety net: force-kill anything still on our ports
+sleep 1
+for port in "${STACK_PORTS[@]}"; do
+  for pid in $(get_port_pids "$port"); do
+    warn "Force-killing process $pid on port $port"
+    kill -9 "$pid" 2>/dev/null || true
+  done
+done
+
+info "All services stopped and ports freed"
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 2 — Backup user data
