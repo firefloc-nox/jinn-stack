@@ -55,8 +55,20 @@ get_port_pids() {
   if command -v lsof &>/dev/null; then
     lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true
   elif command -v ss &>/dev/null; then
-    ss -tlnp "sport = :$port" 2>/dev/null | grep -oP 'pid=\K[0-9]+' || true
+    ss -tlnp "sport = :$port" 2>/dev/null | awk -F'pid=' '{print $2}' | awk -F',' '{print $1}' | grep -v '^$' || true
   fi
+}
+
+kill_tree() {
+  local pid="$1" sig="${2:-TERM}"
+  [ "$pid" = "$$" ] && return 0
+  [ "$pid" = "$PPID" ] && return 0
+  local children
+  children=$(pgrep -P "$pid" 2>/dev/null || true)
+  for child in $children; do
+    kill_tree "$child" "$sig"
+  done
+  kill -"$sig" "$pid" 2>/dev/null || true
 }
 
 # ═══════════════════════════════════════════════════════════════
@@ -64,34 +76,17 @@ get_port_pids() {
 # ═══════════════════════════════════════════════════════════════
 section "Stopping services"
 
-# Try stop.sh first (graceful + port-based)
+# Try stop.sh first (has full 3-phase shutdown with tree-kill)
 if [ -f "$JINN_HOME/stop.sh" ]; then
   bash "$JINN_HOME/stop.sh" 2>/dev/null || true
 fi
 
-# Manual kill by PID files (fallback if stop.sh was missing or failed)
-for pidfile in "$JINN_HOME/tmp/"*.pid; do
-  [ -f "$pidfile" ] || continue
-  pid=$(cat "$pidfile")
-  kill "$pid" 2>/dev/null || true
-  rm -f "$pidfile"
-done
-
-# Kill by process patterns
-for pattern in jimmy mcp.memory mcp-memory-service memviz supergateway; do
-  pids=$(pgrep -f "$pattern" 2>/dev/null || true)
-  for pid in $pids; do
-    [ "$pid" = "$$" ] && continue
-    kill "$pid" 2>/dev/null || true
-  done
-done
-
-# Final safety net: force-kill anything still on our ports
+# Safety net: force-kill anything still on our ports
 sleep 1
 for port in "${STACK_PORTS[@]}"; do
   for pid in $(get_port_pids "$port"); do
     warn "Force-killing process $pid on port $port"
-    kill -9 "$pid" 2>/dev/null || true
+    kill_tree "$pid" 9
   done
 done
 

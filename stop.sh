@@ -17,7 +17,6 @@ STACK_PORTS=("$GATEWAY_PORT" "$MCP_MEMORY_PORT" "$MEMVIZ_BACKEND_PORT" "$MEMVIZ_
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
 
@@ -30,8 +29,23 @@ get_port_pids() {
   if command -v lsof &>/dev/null; then
     lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true
   elif command -v ss &>/dev/null; then
-    ss -tlnp "sport = :$port" 2>/dev/null | grep -oP 'pid=\K[0-9]+' || true
+    ss -tlnp "sport = :$port" 2>/dev/null | awk -F'pid=' '{print $2}' | awk -F',' '{print $1}' | grep -v '^$' || true
   fi
+}
+
+# ── Kill a process and all its descendants ──
+kill_tree() {
+  local pid="$1" sig="${2:-TERM}"
+  # Skip self and parent
+  [ "$pid" = "$$" ] && return 0
+  [ "$pid" = "$PPID" ] && return 0
+  # Find children first (depth-first)
+  local children
+  children=$(pgrep -P "$pid" 2>/dev/null || true)
+  for child in $children; do
+    kill_tree "$child" "$sig"
+  done
+  kill -"$sig" "$pid" 2>/dev/null || true
 }
 
 stop_service() {
@@ -45,8 +59,8 @@ stop_service() {
   pid=$(cat "$pidfile")
 
   if kill -0 "$pid" 2>/dev/null; then
-    # Graceful shutdown first
-    kill "$pid" 2>/dev/null
+    # Kill the entire process tree gracefully
+    kill_tree "$pid" TERM
     local waited=0
     while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 5 ]; do
       sleep 1
@@ -54,7 +68,7 @@ stop_service() {
     done
 
     if kill -0 "$pid" 2>/dev/null; then
-      kill -9 "$pid" 2>/dev/null || true
+      kill_tree "$pid" 9
       warn "$name (PID $pid) force-killed"
     else
       info "$name (PID $pid) stopped"
@@ -67,36 +81,30 @@ stop_service() {
 echo -e "${BOLD}Stopping Jinn Stack...${NC}"
 echo ""
 
-# Phase 1: Stop by PID files (graceful)
+# Phase 1: Stop by PID files — kill entire process trees
 stop_service "Jinn Gateway"   "$PID_DIR/gateway.pid"
 stop_service "MCP Memory"     "$PID_DIR/mcp-memory.pid"
 stop_service "MemViz Server"  "$PID_DIR/memviz-server.pid"
 stop_service "MemViz Client"  "$PID_DIR/memviz-client.pid"
 
-# Phase 2: Kill by pattern (catches child processes)
-for pattern in jimmy mcp.memory mcp-memory-service memviz supergateway; do
+# Phase 2: Kill by specific patterns (catches orphaned children)
+# Patterns are specific to avoid matching unrelated processes
+for pattern in "jimmy.js start" "mcp-memory-service" "mcp_memory_service" "supergateway.*port" "memviz.*server" "memviz.*vite"; do
   pids=$(pgrep -f "$pattern" 2>/dev/null || true)
   for pid in $pids; do
     [ "$pid" = "$$" ] && continue
-    kill "$pid" 2>/dev/null || true
-  done
-done
-
-# Phase 3: Kill anything still on our ports (graceful then force)
-for port in "${STACK_PORTS[@]}"; do
-  for pid in $(get_port_pids "$port"); do
-    warn "Killing process $pid on port $port"
-    kill "$pid" 2>/dev/null || true
+    [ "$pid" = "$PPID" ] && continue
+    kill_tree "$pid" TERM
   done
 done
 
 sleep 1
 
-# Phase 4: Force-kill stragglers on ports
+# Phase 3: Force-kill anything still on our ports
 for port in "${STACK_PORTS[@]}"; do
   for pid in $(get_port_pids "$port"); do
     warn "Force-killing process $pid on port $port"
-    kill -9 "$pid" 2>/dev/null || true
+    kill_tree "$pid" 9
   done
 done
 

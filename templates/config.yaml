@@ -28,7 +28,7 @@ portal:
   portalName: Noxis
   operatorName: OPERATOR_NAME
   language: French
-  onboarded: true
+  onboarded: false
 logging:
   file: true
   stdout: true
