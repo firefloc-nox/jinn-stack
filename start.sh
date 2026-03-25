@@ -43,8 +43,11 @@ kill_tree() {
   local pid="$1" sig="${2:-TERM}"
   [ "$pid" = "$$" ] && return 0
   [ "$pid" = "$PPID" ] && return 0
+  # pgrep -P absent on macOS < 13 — fallback to POSIX ps
   local children
-  children=$(pgrep -P "$pid" 2>/dev/null || true)
+  children=$(pgrep -P "$pid" 2>/dev/null \
+    || ps -eo pid=,ppid= 2>/dev/null | awk -v p="$pid" '$2==p{print $1}' \
+    || true)
   for child in $children; do
     kill_tree "$child" "$sig"
   done
@@ -56,7 +59,17 @@ get_port_pids() {
   if command -v lsof &>/dev/null; then
     lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true
   elif command -v ss &>/dev/null; then
-    ss -tlnp "sport = :$port" 2>/dev/null | awk -F'pid=' '{print $2}' | awk -F',' '{print $1}' | grep -v '^$' || true
+    # Parse robustly: extract pid= values regardless of ss version/locale
+    ss -tlnp "sport = :$port" 2>/dev/null \
+      | awk 'NR>1 && index($0,"pid=") {
+          n = split($0, parts, "pid=")
+          for (i=2; i<=n; i++) {
+            pid = parts[i]; gsub(/[^0-9].*/, "", pid)
+            if (pid ~ /^[0-9]+$/) print pid
+          }
+        }' || true
+  elif command -v fuser &>/dev/null; then
+    fuser "${port}/tcp" 2>/dev/null | tr ' ' '\n' | grep -v '^$' || true
   fi
 }
 
