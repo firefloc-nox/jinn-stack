@@ -43,11 +43,8 @@ kill_tree() {
   local pid="$1" sig="${2:-TERM}"
   [ "$pid" = "$$" ] && return 0
   [ "$pid" = "$PPID" ] && return 0
-  # pgrep -P absent on macOS < 13 — fallback to POSIX ps
   local children
-  children=$(pgrep -P "$pid" 2>/dev/null \
-    || ps -eo pid=,ppid= 2>/dev/null | awk -v p="$pid" '$2==p{print $1}' \
-    || true)
+  children=$(pgrep -P "$pid" 2>/dev/null || true)
   for child in $children; do
     kill_tree "$child" "$sig"
   done
@@ -59,17 +56,7 @@ get_port_pids() {
   if command -v lsof &>/dev/null; then
     lsof -ti :"$port" -sTCP:LISTEN 2>/dev/null || true
   elif command -v ss &>/dev/null; then
-    # Parse robustly: extract pid= values regardless of ss version/locale
-    ss -tlnp "sport = :$port" 2>/dev/null \
-      | awk 'NR>1 && index($0,"pid=") {
-          n = split($0, parts, "pid=")
-          for (i=2; i<=n; i++) {
-            pid = parts[i]; gsub(/[^0-9].*/, "", pid)
-            if (pid ~ /^[0-9]+$/) print pid
-          }
-        }' || true
-  elif command -v fuser &>/dev/null; then
-    fuser "${port}/tcp" 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+$' || true
+    ss -tlnp "sport = :$port" 2>/dev/null | awk -F'pid=' '{print $2}' | awk -F',' '{print $1}' | grep -v '^$' || true
   fi
 }
 
@@ -147,33 +134,43 @@ start_service() {
     return 1
   fi
 }
-
 echo -e "${BOLD}Starting Jinn Stack...${NC}"
 echo ""
 
-# 1. Jinn Gateway
-start_service \
-  "Jinn Gateway" \
-  "$GATEWAY_PORT" \
-  "$PID_DIR/gateway.pid" \
-  "cd '$JINN_CLI_DIR' && node packages/jimmy/dist/bin/jimmy.js start" \
-  "$LOG_DIR/gateway-stdout.log"
-
-# 2. MCP Memory Service (via supergateway)
-# Default DB path: macOS uses ~/Library/Application Support, Linux uses ~/.local/share
+# 1. MCP Memory Service (via supergateway)
 if [ "$(uname)" = "Darwin" ]; then
   _DEFAULT_MCP_DB="$HOME/Library/Application Support/mcp-memory/sqlite_vec.db"
 else
   _DEFAULT_MCP_DB="$HOME/.local/share/mcp-memory/sqlite_vec.db"
 fi
+
 MCP_MEMORY_DB="${MCP_MEMORY_DB:-$_DEFAULT_MCP_DB}"
 mkdir -p "$(dirname "$MCP_MEMORY_DB")"
+
 start_service \
   "MCP Memory" \
   "$MCP_MEMORY_PORT" \
   "$PID_DIR/mcp-memory.pid" \
   "npx -y supergateway --stdio '${MEM0_VENV}/bin/python3 -m mcp_memory_service.server --db \"${MCP_MEMORY_DB}\"' --port $MCP_MEMORY_PORT --outputTransport streamableHttp" \
   "$LOG_DIR/memory-mcp.log"
+
+echo "Waiting for MCP Memory to become available..."
+
+for i in {1..40}; do
+  if lsof -i:$MCP_MEMORY_PORT >/dev/null 2>&1; then
+    info "MCP Memory ready"
+    break
+  fi
+  sleep 0.5
+done
+
+# 2. Jinn Gateway
+start_service \
+  "Jinn Gateway" \
+  "$GATEWAY_PORT" \
+  "$PID_DIR/gateway.pid" \
+  "cd '$JINN_CLI_DIR' && node packages/jimmy/dist/bin/jimmy.js start" \
+  "$LOG_DIR/gateway-stdout.log"
 
 # 3. MemViz Server (backend — uses built dist if available, falls back to dev)
 _MEMVIZ_CORS="http://localhost:$MEMVIZ_FRONTEND_PORT,http://127.0.0.1:$MEMVIZ_FRONTEND_PORT,http://localhost:5173,http://127.0.0.1:5173"
