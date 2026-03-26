@@ -1,6 +1,6 @@
 # Jinn Remote Node — Instructions
 
-<!-- Repo: https://github.com/firefloc-nox/jinn.git | Branch: custom-v2 -->
+<!-- Repo: https://github.com/firefloc-nox/jinn-v3.git | Branch: custom-v3 -->
 
 Tu es une instance Claude Code connectée à l'infrastructure **Jinn** via le Tailnet.
 Le gateway central tourne sur `GATEWAY_HOSTNAME` (GATEWAY_TAILSCALE_IP).

@@ -1,6 +1,6 @@
 # Jinn Remote Kit
 
-> **Repo** : `https://github.com/firefloc-nox/jinn.git` — branche `custom-v2`
+> **Repo** : `https://github.com/firefloc-nox/jinn-v3.git` — branche `custom-v3`
 
 Kit d'intégration pour connecter Claude Code (VSCode) sur une machine distante à l'infrastructure Jinn via Tailscale.
 
@@ -25,7 +25,7 @@ Sur la machine distante :
 
 ```bash
 # Option A: Cloner le repo
-git clone -b custom-v2 https://github.com/firefloc-nox/jinn.git /tmp/jinn
+git clone -b custom-v3 https://github.com/firefloc-nox/jinn-v3.git /tmp/jinn
 bash /tmp/jinn/remote/setup.sh
 
 # Option B: Copier le kit depuis le serveur gateway

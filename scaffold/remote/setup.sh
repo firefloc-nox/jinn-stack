@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Jinn Remote Kit — Installation script
 # Connects local Claude Code to the shared Jinn infrastructure via Tailnet
-# Repo: https://github.com/firefloc-nox/jinn.git (branch: custom-v2)
+# Repo: https://github.com/firefloc-nox/jinn-v3.git (branch: custom-v3)
 #
 # Usage: bash setup.sh [--project /path/to/project]
 

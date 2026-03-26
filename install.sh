@@ -397,13 +397,13 @@ section "Jinn Gateway"
 
 if [ -d "$JINN_CLI_DIR/.git" ]; then
   step "Repo already cloned at $JINN_CLI_DIR — pulling latest"
-  git -C "$JINN_CLI_DIR" fetch origin custom-v2
-  git -C "$JINN_CLI_DIR" checkout custom-v2
-  git -C "$JINN_CLI_DIR" pull origin custom-v2
+  git -C "$JINN_CLI_DIR" fetch origin custom-v3
+  git -C "$JINN_CLI_DIR" checkout custom-v3
+  git -C "$JINN_CLI_DIR" pull origin custom-v3
 else
-  step "Cloning jinn (branch custom-v2)..."
+  step "Cloning jinn (branch custom-v3)..."
   mkdir -p "$(dirname "$JINN_CLI_DIR")"
-  git clone -b custom-v2 https://github.com/firefloc-nox/jinn.git "$JINN_CLI_DIR"
+  git clone -b custom-v3 https://github.com/firefloc-nox/jinn-v3.git "$JINN_CLI_DIR"
 fi
 info "Jinn repo ready at $JINN_CLI_DIR"
 
@@ -671,7 +671,7 @@ echo ""
 echo -e "${GREEN}${BOLD}  Installation complete!${NC}"
 echo ""
 echo "  Installed components:"
-echo "    Jinn Gateway   $JINN_CLI_DIR (branch: custom-v2)"
+echo "    Jinn Gateway   $JINN_CLI_DIR (branch: custom-v3)"
 echo "    Mem0 + MCP     $MEM0_VENV"
 echo "    MemViz         $MEMVIZ_DIR"
 echo "    Config         $JINN_HOME/"

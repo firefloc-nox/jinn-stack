@@ -6,7 +6,7 @@ Full installation script for the Noxis AI gateway ecosystem.
 
 | Component | Description | Source |
 |-----------|-------------|--------|
-| **Jinn** | AI gateway — session management, org, cron, connectors | `github.com/firefloc-nox/jinn` (branch: `custom-v2`) |
+| **Jinn** | AI gateway — session management, org, cron, connectors | `github.com/firefloc-nox/jinn-v3` (branch: `custom-v3`) |
 | **Mem0** | Vector memory layer (Python) | PyPI: `mem0ai` |
 | **MCP Memory Service** | MCP server for shared memory access | PyPI: `mcp-memory-service` |
 | **MemViz** | Memory visualization dashboard | `github.com/pfillion42/memviz` |

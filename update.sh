@@ -77,10 +77,10 @@ info "Backed up to $BACKUP_DIR"
 # ═══════════════════════════════════════════════════════════════
 section "Updating Jinn Gateway"
 
-step "Pulling latest from custom-v2..."
-git -C "$JINN_CLI_DIR" fetch origin custom-v2
-git -C "$JINN_CLI_DIR" checkout custom-v2
-git -C "$JINN_CLI_DIR" pull origin custom-v2
+step "Pulling latest from custom-v3..."
+git -C "$JINN_CLI_DIR" fetch origin custom-v3
+git -C "$JINN_CLI_DIR" checkout custom-v3
+git -C "$JINN_CLI_DIR" pull origin custom-v3
 info "Jinn repo updated"
 
 step "Installing dependencies..."
