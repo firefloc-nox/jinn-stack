@@ -156,9 +156,13 @@ start_service \
 
 echo "Waiting for MCP Memory to become available..."
 
-for i in {1..40}; do
-  if lsof -i:$MCP_MEMORY_PORT >/dev/null 2>&1; then
-    info "MCP Memory ready"
+for i in {1..60}; do
+  response=$(curl -s -X POST "http://localhost:$MCP_MEMORY_PORT/mcp" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"ping"}' 2>/dev/null || true)
+  if echo "$response" | grep -q '"result"'; then
+    info "MCP Memory ready (responding to ping)"
     break
   fi
   sleep 0.5
